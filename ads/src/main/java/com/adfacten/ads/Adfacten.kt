@@ -4,11 +4,12 @@ import android.content.Context
 import com.adfacten.ads.internal.Logger
 import com.adfacten.ads.internal.Sdk
 import com.adfacten.ads.internal.SdkState
+import com.adfacten.ads.internal.WrapperInfo
 import com.adfacten.ads.internal.safe
 
 /** Entry point of the Adfacten Ads SDK. */
 public object Adfacten {
-    /** Version of this SDK, e.g. "1.0.0". */
+    /** Version of this SDK, e.g. "1.0.2". */
     @JvmStatic
     public val sdkVersion: String get() = BuildConfig.SDK_VERSION
 
@@ -42,6 +43,18 @@ public object Adfacten {
             }
             Logger.i("Adfacten SDK $sdkVersion initialized (test=${config.testMode}, childDirected=${config.childDirected})")
         }
+    }
+
+    /**
+     * For framework plugins (Flutter, React Native, Unity) only; native apps never call this.
+     * Reports the plugin in ad requests (`app.wrapper`) and in the User-Agent. Call before [initialize].
+     *
+     * @param name `flutter`, `react_native`, `unity` or `other`; anything else is sent as `other`.
+     * @param version the plugin version, up to 20 characters of `0-9 A-Z a-z . + -`; otherwise sent as `unknown`.
+     */
+    @JvmStatic
+    public fun setWrapper(name: String, version: String) {
+        safe("setWrapper") { Sdk.wrapper = WrapperInfo.of(name, version) }
     }
 
     @JvmStatic

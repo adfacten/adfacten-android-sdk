@@ -73,7 +73,14 @@ internal object AdRequestBuilder {
         return Identity(sdkId, "sdk", lmt, sdkId)
     }
 
-    fun build(p: AdRequestParams, d: DeviceSnapshot, app: AppSnapshot, consent: ConsentSnapshot, sdkVersion: String): JSONObject {
+    fun build(
+        p: AdRequestParams,
+        d: DeviceSnapshot,
+        app: AppSnapshot,
+        consent: ConsentSnapshot,
+        sdkVersion: String,
+        wrapper: WrapperInfo? = null,
+    ): JSONObject {
         val device = JSONObject()
             .put("os", "android")
             .put("osv", d.osv)
@@ -102,6 +109,9 @@ internal object AdRequestBuilder {
         if (p.format == AdFormat.NATIVE) kinds.put("native")
         if (p.videoSupported && (p.format == AdFormat.INTERSTITIAL || p.format == AdFormat.REWARDED)) kinds.put("video")
 
+        val appJson = JSONObject().put("bundle", app.bundle).put("version", app.version).put("sdk_version", sdkVersion)
+        if (wrapper != null) appJson.put("wrapper", JSONObject().put("name", wrapper.name).put("version", wrapper.version))
+
         val root = JSONObject()
             .put("v", 1)
             .put("app_key", p.appKey)
@@ -110,7 +120,7 @@ internal object AdRequestBuilder {
             .put("sizes", JSONArray(p.sizes))
             .put("kinds", kinds)
             .put("device", device)
-            .put("app", JSONObject().put("bundle", app.bundle).put("version", app.version).put("sdk_version", sdkVersion))
+            .put("app", appJson)
             .put("regs", regs)
             .put("test", p.test)
         if (p.format == AdFormat.REWARDED && (!p.userId.isNullOrEmpty() || !p.custom.isNullOrEmpty())) {
@@ -122,9 +132,12 @@ internal object AdRequestBuilder {
         return root
     }
 
-    /** `AdfactenSDK/<sdk> (android <osv>; <model>) <bundle>/<app_version>`, ASCII only (HTTP header safe). */
-    fun userAgent(sdkVersion: String, osv: String, model: String, bundle: String, appVersion: String): String =
-        ascii("AdfactenSDK/$sdkVersion (android $osv; $model) $bundle/$appVersion")
+    /**
+     * `AdfactenSDK/<sdk> (android <osv>; <model>) <bundle>/<app_version>[ Wrapper/<name>-<version>]`,
+     * ASCII only (HTTP header safe).
+     */
+    fun userAgent(sdkVersion: String, osv: String, model: String, bundle: String, appVersion: String, wrapper: WrapperInfo? = null): String =
+        ascii("AdfactenSDK/$sdkVersion (android $osv; $model) $bundle/$appVersion" + (wrapper?.userAgentSuffix ?: ""))
 
     private fun ascii(s: String): String = buildString(s.length) {
         for (c in s) append(if (c in ' '..'~') c else '_')

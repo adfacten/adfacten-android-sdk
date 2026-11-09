@@ -67,6 +67,9 @@ internal class SdkState(
 internal object Sdk {
     @Volatile var state: SdkState? = null
 
+    /** Set by [com.adfacten.ads.Adfacten.setWrapper]; null for plain native apps. */
+    @Volatile var wrapper: WrapperInfo? = null
+
     val main: Handler by lazy { Handler(Looper.getMainLooper()) }
 
     /** Serial: beacon queue + small disk I/O. */

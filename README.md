@@ -27,10 +27,10 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.adfacten:ads:1.0.1")
+    implementation("com.adfacten:ads:1.0.2")
     // Optional:
-    implementation("com.adfacten:ads-video:1.0.1") // video interstitial / rewarded (minSdk 23)
-    implementation("com.adfacten:ads-gaid:1.0.1")  // advertising ID + App Set ID
+    implementation("com.adfacten:ads-video:1.0.2") // video interstitial / rewarded (minSdk 23)
+    implementation("com.adfacten:ads-gaid:1.0.2")  // advertising ID + App Set ID
 }
 ```
 
@@ -84,7 +84,7 @@ Sizes: `banner` (320x50), `large_banner` (320x100), `medium_rectangle` (300x250)
 ```kotlin
 val banner = findViewById<AdfactenBannerView>(R.id.banner)
 banner.listener = object : BannerAdListener {
-    override fun onFailed(error: AdError) { /* hide the slot */ }
+    override fun onFailed(error: AdError) { /* the banner retries by itself */ }
 }
 banner.load()
 ```
@@ -99,6 +99,13 @@ banner.load();
 
 The impression is counted only when the banner is actually on screen. Refresh follows the placement setting
 (30–120 s) and only counts time while the banner is at least 50% visible and its activity is resumed.
+`autoRefresh = false` (or `app:adf_autoRefresh="false"`) turns refresh off even if the placement has an
+interval; `true` keeps it on (60 s if the placement has none); left unset, the placement decides.
+
+If a load fails (no fill, network or server error), the banner tries again by itself on the same timer, never
+sooner than the placement's backoff (30 s, growing to 15 min after repeated no-fills) and only while it is
+visible. So keep the banner in the layout instead of hiding it in `onFailed`; `onLoaded` fires when a retry
+fills. A refusal (`REJECTED`, `INVALID_REQUEST`) stops retrying until you call `load()` again.
 The banner cleans up when its activity is destroyed; call `destroy()` if you remove it earlier.
 
 ## 4. Interstitial
@@ -232,6 +239,9 @@ The views can also be set in code (`nativeAdView.titleView = …`). `NativeAd` e
 labeled: if you don't map `adLabelView`, the SDK adds a small "Ad" badge. Impressions, views and clicks are
 tracked by `NativeAdView`.
 
+Binding the same `NativeAd` again (for example when a `RecyclerView` rebinds a row) never records a second
+impression. An ad is shown in one view at a time: binding it to another view removes it from the previous one.
+
 ## 7. App open
 
 ```kotlin
@@ -289,6 +299,52 @@ photos, messages, health or financial data.
 `NETWORK_ERROR`, `REJECTED` (see `serverCode`: `unknown_app`, `app_not_approved`, `bundle_mismatch`,
 `platform_mismatch`, `placement_mismatch`, `coppa`), `INVALID_REQUEST`, `AD_EXPIRED`, `ALREADY_SHOWN`,
 `VIDEO_NOT_SUPPORTED`, `SHOW_FAILED`, `NOT_INITIALIZED`.
+
+`AdError.name` is a stable string for the same error, shared with the iOS SDK. Prefer it in cross-platform
+code and logs:
+
+| `code` | `name` |
+|---|---|
+| `INTERNAL_ERROR` (0) | `internal_error` |
+| `NOT_INITIALIZED` (1) | `not_initialized` |
+| `INVALID_REQUEST` (2) | `invalid_request` |
+| `NETWORK_ERROR` (3) | `network_error` |
+| `NO_FILL` (4) | `no_fill` |
+| `SERVER_ERROR` (5) | `server_error` |
+| `INVALID_RESPONSE` (6) | `invalid_response` |
+| `REJECTED` (7) | `rejected` |
+| `AD_EXPIRED` (8) | `ad_expired` |
+| `ALREADY_SHOWN` (9) | `already_shown` |
+| `VIDEO_NOT_SUPPORTED` (10) | `video_not_supported` |
+| `SHOW_FAILED` (11) | `show_failed` |
+| `LOAD_IN_PROGRESS` (12) | `load_in_progress` |
+
+The shared vocabulary also has `not_ready`, `child_directed` and `creative_failed`, which the iOS SDK can
+report; Android does not produce them today (child-directed refusals arrive as `rejected` with
+`serverCode = "coppa"`). `AdError.nameOf(code)` gives the name for a code.
+
+## 13. Framework plugins
+
+Plugins that wrap this SDK (Flutter, React Native, Unity) report themselves before initializing:
+
+```kotlin
+Adfacten.setWrapper("flutter", "1.0.1") // then Adfacten.initialize(...)
+```
+
+`name` is `flutter`, `react_native`, `unity` or `other` (anything else is sent as `other`); `version` is up to
+20 characters of `0-9 A-Z a-z . + -` (otherwise sent as `unknown`). It is sent as `app.wrapper` in ad requests
+and appended to the User-Agent as ` Wrapper/<name>-<version>`. Native apps never call this.
+
+## Changelog
+
+### 1.0.2
+- Banner: after a failed load the banner retries on its refresh timer, respecting the per-placement backoff
+  and only while visible; a refusal stops retrying until `load()`.
+- Banner: `autoRefresh` set by the app always wins over the placement's refresh setting.
+- Native: binding the same ad again (or to a new view) never records a second impression or `onShown`.
+- `AdError.name`: stable error names shared with iOS.
+- `Adfacten.setWrapper(name, version)` for framework plugins.
+- Rewarded: `AdReward.amount` is the server's integer value, unchanged.
 
 ## Building from source
 

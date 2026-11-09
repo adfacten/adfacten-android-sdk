@@ -27,10 +27,10 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.adfacten:ads:1.0.1")
+    implementation("com.adfacten:ads:1.0.2")
     // İsteğe bağlı:
-    implementation("com.adfacten:ads-video:1.0.1") // video geçiş / ödüllü (minSdk 23)
-    implementation("com.adfacten:ads-gaid:1.0.1")  // reklam kimliği + App Set ID
+    implementation("com.adfacten:ads-video:1.0.2") // video geçiş / ödüllü (minSdk 23)
+    implementation("com.adfacten:ads-gaid:1.0.2")  // reklam kimliği + App Set ID
 }
 ```
 
@@ -84,7 +84,7 @@ Boyutlar: `banner` (320x50), `large_banner` (320x100), `medium_rectangle` (300x2
 ```kotlin
 val banner = findViewById<AdfactenBannerView>(R.id.banner)
 banner.listener = object : BannerAdListener {
-    override fun onFailed(error: AdError) { /* alanı gizleyin */ }
+    override fun onFailed(error: AdError) { /* banner kendisi yeniden dener */ }
 }
 banner.load()
 ```
@@ -98,8 +98,15 @@ banner.load();
 ```
 
 Gösterim yalnızca banner gerçekten ekrandayken sayılır. Yenileme yerleşim ayarına göre (30–120 sn) yapılır ve
-yalnızca banner en az %50 göründüğü ve ekranı açık olduğu süre sayılır. Banner, bağlı olduğu ekran
-kapanınca kendini temizler; daha önce kaldırırsanız `destroy()` çağırın.
+yalnızca banner en az %50 göründüğü ve ekranı açık olduğu süre sayılır. `autoRefresh = false` (ya da
+`app:adf_autoRefresh="false"`) yerleşimde yenileme süresi olsa bile yenilemeyi kapatır; `true` açık tutar
+(yerleşimde süre yoksa 60 sn); hiç ayarlanmazsa yerleşim ayarı geçerlidir.
+
+Yükleme başarısız olursa (reklam yok, ağ ya da sunucu hatası) banner aynı zamanlayıcıyla kendisi yeniden dener;
+yerleşimin bekleme süresinden (30 sn, art arda reklam yoksa 15 dk'ya kadar uzar) önce denemez ve yalnızca
+görünürken dener. Bu yüzden banner'ı `onFailed` içinde gizlemeyin, yerleşimde bırakın; deneme dolunca
+`onLoaded` gelir. Ret (`REJECTED`, `INVALID_REQUEST`) gelirse `load()` yeniden çağrılana kadar denemez.
+Banner, bağlı olduğu ekran kapanınca kendini temizler; daha önce kaldırırsanız `destroy()` çağırın.
 
 ## 4. Geçiş reklamı (interstitial)
 
@@ -232,6 +239,9 @@ Görünümler kodla da verilebilir (`nativeAdView.titleView = …`). `NativeAd` 
 görünmelidir: `adLabelView` eşlemezseniz SDK küçük bir "Reklam" etiketi ekler. Gösterim, görüntülenme ve
 tıklamaları `NativeAdView` izler.
 
+Aynı `NativeAd` yeniden bağlanırsa (ör. `RecyclerView` satırı yeniden bağladığında) ikinci bir gösterim
+sayılmaz. Reklam aynı anda tek görünümde durur: başka bir görünüme bağlamak onu öncekinden kaldırır.
+
 ## 7. Açılış reklamı (app open)
 
 ```kotlin
@@ -288,6 +298,53 @@ sağlık ya da finans verisi toplamaz.
 `REJECTED` (`serverCode`: `unknown_app`, `app_not_approved`, `bundle_mismatch`, `platform_mismatch`,
 `placement_mismatch`, `coppa`), `INVALID_REQUEST`, `AD_EXPIRED`, `ALREADY_SHOWN`, `VIDEO_NOT_SUPPORTED`,
 `SHOW_FAILED`, `NOT_INITIALIZED`.
+
+`AdError.name` aynı hatanın değişmeyen metin adıdır ve iOS SDK ile ortaktır. Çok platformlu kodda ve
+kayıtlarda bunu kullanın:
+
+| `code` | `name` |
+|---|---|
+| `INTERNAL_ERROR` (0) | `internal_error` |
+| `NOT_INITIALIZED` (1) | `not_initialized` |
+| `INVALID_REQUEST` (2) | `invalid_request` |
+| `NETWORK_ERROR` (3) | `network_error` |
+| `NO_FILL` (4) | `no_fill` |
+| `SERVER_ERROR` (5) | `server_error` |
+| `INVALID_RESPONSE` (6) | `invalid_response` |
+| `REJECTED` (7) | `rejected` |
+| `AD_EXPIRED` (8) | `ad_expired` |
+| `ALREADY_SHOWN` (9) | `already_shown` |
+| `VIDEO_NOT_SUPPORTED` (10) | `video_not_supported` |
+| `SHOW_FAILED` (11) | `show_failed` |
+| `LOAD_IN_PROGRESS` (12) | `load_in_progress` |
+
+Ortak listede ayrıca `not_ready`, `child_directed` ve `creative_failed` vardır; bunları iOS SDK verebilir,
+Android şu an üretmez (çocuklara yönelik trafik reddi `rejected` ve `serverCode = "coppa"` olarak gelir).
+`AdError.nameOf(code)` bir kodun adını verir.
+
+## 13. Çatı eklentileri
+
+Bu SDK'yı saran eklentiler (Flutter, React Native, Unity) başlatmadan önce kendini bildirir:
+
+```kotlin
+Adfacten.setWrapper("flutter", "1.0.1") // sonra Adfacten.initialize(...)
+```
+
+`name`: `flutter`, `react_native`, `unity` ya da `other` (başka her değer `other` gönderilir); `version` en
+fazla 20 karakter, yalnız `0-9 A-Z a-z . + -` (değilse `unknown` gönderilir). Reklam isteklerinde
+`app.wrapper` olarak gider ve User-Agent sonuna ` Wrapper/<ad>-<sürüm>` eklenir. Doğrudan Android
+uygulamaları bunu çağırmaz.
+
+## Sürüm notları
+
+### 1.0.2
+- Banner: başarısız yüklemeden sonra yenileme zamanlayıcısıyla yeniden dener; yerleşim bekleme süresine uyar
+  ve yalnızca görünürken dener; ret gelirse `load()` çağrılana kadar durur.
+- Banner: uygulamanın verdiği `autoRefresh` her zaman yerleşim ayarından önce gelir.
+- Native: aynı reklamı yeniden (ya da yeni bir görünüme) bağlamak ikinci gösterim ya da `onShown` üretmez.
+- `AdError.name`: iOS ile ortak, değişmeyen hata adları.
+- Çatı eklentileri için `Adfacten.setWrapper(name, version)`.
+- Ödüllü: `AdReward.amount` sunucunun gönderdiği tam sayıdır, değiştirilmez.
 
 ## Lisans
 

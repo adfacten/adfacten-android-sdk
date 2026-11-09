@@ -81,7 +81,7 @@ internal object AdLoader {
             custom = custom,
             videoSupported = VideoSupport.isAvailable,
         )
-        val body = AdRequestBuilder.build(params, device, st.device.app, consent, BuildConfig.SDK_VERSION).toString()
+        val body = AdRequestBuilder.build(params, device, st.device.app, consent, BuildConfig.SDK_VERSION, Sdk.wrapper).toString()
         Logger.d("POST /m/v1/ad $body")
 
         val resp = try {

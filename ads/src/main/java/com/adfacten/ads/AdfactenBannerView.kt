@@ -10,6 +10,7 @@ import android.widget.ImageView
 import com.adfacten.ads.internal.ActivityWatcher
 import com.adfacten.ads.internal.AdFormat
 import com.adfacten.ads.internal.AdLoader
+import com.adfacten.ads.internal.BannerScheduler
 import com.adfacten.ads.internal.ClickOpener
 import com.adfacten.ads.internal.CreativeKind
 import com.adfacten.ads.internal.CreativeWebView
@@ -22,6 +23,7 @@ import com.adfacten.ads.internal.findActivity
 import com.adfacten.ads.internal.safe
 import com.adfacten.ads.internal.track.AdEventTracker
 import com.adfacten.ads.internal.track.VisibilityTracker
+import com.adfacten.ads.internal.track.visibleRatio
 
 /**
  * A banner ad view.
@@ -37,6 +39,9 @@ import com.adfacten.ads.internal.track.VisibilityTracker
  * The impression is recorded only when the creative is really on screen. Auto-refresh (placement setting,
  * 30–120 s) counts only time while the banner is ≥ 50 % visible and its activity is resumed; it stops
  * automatically when the activity is destroyed. Call [destroy] if you remove the view yourself earlier.
+ *
+ * After a failed load (no fill, network or server error) the banner tries again on the same timer, so keep it
+ * in the layout; a refusal (app or placement not approved, …) stops retrying until [load] is called again.
  */
 public class AdfactenBannerView @JvmOverloads constructor(
     context: Context,
@@ -48,8 +53,15 @@ public class AdfactenBannerView @JvmOverloads constructor(
     public var adSize: AdSize = AdSize.BANNER
         set(value) { field = value; requestLayout() }
     public var listener: BannerAdListener? = null
-    /** Set to false to disable refreshing even if the placement has a refresh interval. */
-    public var autoRefresh: Boolean = true
+    private val scheduler = BannerScheduler()
+
+    /**
+     * Set to false to disable refreshing even if the placement has a refresh interval. Set to true to refresh
+     * even if the placement turned it off (every 60 s then). Left unset, the placement setting decides.
+     */
+    public var autoRefresh: Boolean
+        get() = scheduler.appAutoRefresh ?: true
+        set(value) { scheduler.appAutoRefresh = value }
 
     private class Showing(val ad: LoadedAd, val events: AdEventTracker, val tracker: VisibilityTracker, val content: View)
 
@@ -58,7 +70,7 @@ public class AdfactenBannerView @JvmOverloads constructor(
     private var destroyed = false
     private var paused = false
     private var hostResumed = true
-    private var visibleSeconds = 0
+    private val rect = android.graphics.Rect()
     private var watcher: ActivityWatcher? = null
 
     private val ticker = object : Runnable {
@@ -74,7 +86,9 @@ public class AdfactenBannerView @JvmOverloads constructor(
             try {
                 placementId = a.getString(R.styleable.AdfactenBannerView_adf_placementId)
                 adSize = AdSize.fromAttr(a.getInt(R.styleable.AdfactenBannerView_adf_adSize, 0))
-                autoRefresh = a.getBoolean(R.styleable.AdfactenBannerView_adf_autoRefresh, true)
+                if (a.hasValue(R.styleable.AdfactenBannerView_adf_autoRefresh)) {
+                    autoRefresh = a.getBoolean(R.styleable.AdfactenBannerView_adf_autoRefresh, true)
+                }
             } finally {
                 a.recycle()
             }
@@ -83,7 +97,10 @@ public class AdfactenBannerView @JvmOverloads constructor(
 
     /** Requests a banner. Results arrive through [listener] on the main thread. */
     public fun load() {
-        safe("banner load") { loadInternal(isRefresh = false) }
+        safe("banner load") {
+            scheduler.onLoadCalled()
+            loadInternal(isRefresh = false)
+        }
     }
 
     /** Stops refreshing (e.g. when you hide the banner yourself). Activity pause is handled automatically. */
@@ -114,25 +131,35 @@ public class AdfactenBannerView @JvmOverloads constructor(
         val plc = placementId
         if (plc.isNullOrBlank()) {
             val l = listener
-            Sdk.post { l?.onFailed(AdError(AdError.INVALID_REQUEST, "placementId is not set")) }
+            val err = AdError(AdError.INVALID_REQUEST, "placementId is not set")
+            scheduler.onFailed(err, hasAd = showing != null)
+            Sdk.post { l?.onFailed(err) }
             return
         }
         if (loading) return
         loading = true
-        visibleSeconds = 0
+        scheduler.onLoadStarted()
         val target = context.dp(adSize.width) to context.dp(adSize.height)
         AdLoader.load(plc, AdFormat.BANNER, listOf(adSize.wire), null, target) { ad, err ->
             loading = false
             if (destroyed) return@load
             val l = listener
             if (ad != null) {
+                scheduler.onFilled(ad.data.refreshS)
                 safe("banner render") { show(ad) }
                 l?.onLoaded()
-            } else if (!isRefresh || showing == null) {
-                l?.onFailed(err ?: AdError(AdError.INTERNAL_ERROR, "unknown"))
-            } else {
-                Logger.i("banner refresh: $err; keeping the current ad")
+                return@load
             }
+            val error = err ?: AdError(AdError.INTERNAL_ERROR, "unknown")
+            val hasAd = showing != null
+            scheduler.onFailed(error, hasAd)
+            if (scheduler.stopped) Logger.w("banner $plc refused (${error.serverCode ?: error.name}); not retrying until load() is called")
+            if (!isRefresh || !hasAd) {
+                l?.onFailed(error)
+            } else {
+                Logger.i("banner refresh: $error; keeping the current ad")
+            }
+            startTicker()
         }
     }
 
@@ -190,24 +217,17 @@ public class AdfactenBannerView @JvmOverloads constructor(
     }
 
     private fun tick() {
-        val s = showing ?: return
         if (destroyed || loading) return
-        if (!s.events.rendered && s.ad.isExpired) {
+        val s = showing
+        if (s != null && !s.events.rendered && s.ad.isExpired && !scheduler.stopped) {
             // Never shown on screen and now stale: replace it instead of billing an expired impression.
             loadInternal(isRefresh = true)
             return
         }
-        val refresh = refreshSeconds(s.ad) ?: return
-        if (!autoRefresh || paused || !hostResumed) return
-        if (s.tracker.visibleRatio() >= 0.5f) visibleSeconds++
-        if (visibleSeconds >= refresh) loadInternal(isRefresh = true)
-    }
-
-    /** Placement refresh interval from the response, clamped to 30–120 s; 0 means off. Default 60 s. */
-    private fun refreshSeconds(ad: LoadedAd): Int? {
-        val r = ad.data.refreshS ?: DEFAULT_REFRESH_S
-        if (r <= 0) return null
-        return r.coerceIn(30, 120)
+        val plc = placementId ?: return
+        val visible = !paused && hostResumed && visibleRatio(this, rect) >= 0.5f
+        val backoffMs = Sdk.state?.backoff?.remainingMs(plc) ?: 0L
+        if (scheduler.tick(hasAd = s != null, visible = visible, backoffMs = backoffMs)) loadInternal(isRefresh = true)
     }
 
     private fun startTicker() {
@@ -236,9 +256,5 @@ public class AdfactenBannerView @JvmOverloads constructor(
         val w = resolveSize(context.dp(adSize.width), widthMeasureSpec)
         val h = resolveSize(context.dp(adSize.height), heightMeasureSpec)
         super.onMeasure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
-    }
-
-    private companion object {
-        const val DEFAULT_REFRESH_S = 60
     }
 }

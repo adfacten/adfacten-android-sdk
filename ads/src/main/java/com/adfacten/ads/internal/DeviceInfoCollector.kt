@@ -25,9 +25,12 @@ internal class DeviceInfoCollector(private val context: Context) {
         AppSnapshot(context.packageName, version)
     }
 
-    val userAgent: String by lazy {
+    private val baseUserAgent: String by lazy {
         AdRequestBuilder.userAgent(BuildConfig.SDK_VERSION, Build.VERSION.RELEASE ?: "", Build.MODEL ?: "", app.bundle, app.version)
     }
+
+    /** Includes the wrapper suffix when [Sdk.wrapper] is set (its characters are already header safe). */
+    val userAgent: String get() = baseUserAgent + (Sdk.wrapper?.userAgentSuffix ?: "")
 
     @Volatile private var cachedGaid: Pair<Long, AdvertisingIdInfo?>? = null
     @Volatile private var cachedAppSet: Pair<Long, String?>? = null

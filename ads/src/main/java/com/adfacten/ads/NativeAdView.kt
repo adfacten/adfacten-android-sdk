@@ -42,7 +42,6 @@ public class NativeAdView @JvmOverloads constructor(
     private val idRefs = IntArray(7)
     private var ad: NativeAd? = null
     private var tracker: VisibilityTracker? = null
-    private var events: AdEventTracker? = null
     private var autoLabel: TextView? = null
 
     init {
@@ -76,7 +75,10 @@ public class NativeAdView @JvmOverloads constructor(
         }
     }
 
-    /** Binds [nativeAd] (or unbinds with null). An ad can be bound to one view only; expired ads are not bound. */
+    /**
+     * Binds [nativeAd] (or unbinds with null). An ad can be bound to one view at a time: binding it here detaches it
+     * from its previous view. Binding the same ad again never records a second impression. Expired ads are not bound.
+     */
     public fun setNativeAd(nativeAd: NativeAd?) {
         safe("setNativeAd") { bind(nativeAd) }
     }
@@ -113,8 +115,7 @@ public class NativeAdView @JvmOverloads constructor(
             }
         }
 
-        val ev = AdEventTracker(nativeAd.loaded.data, st.beacons, st.sdkId) { System.currentTimeMillis() }
-        events = ev
+        val ev = nativeAd.eventTracker { AdEventTracker(nativeAd.loaded.data, st.beacons, st.sdkId) { System.currentTimeMillis() } }
         val click = OnClickListener { onClick(nativeAd, ev) }
         setOnClickListener(click)
         listOfNotNull(titleView, bodyView, brandView, callToActionView, imageView, iconView).forEach { it.setOnClickListener(click) }
@@ -143,7 +144,6 @@ public class NativeAdView @JvmOverloads constructor(
     private fun unbind() {
         tracker?.stop()
         tracker = null
-        events = null
         autoLabel?.let { removeView(it) }
         autoLabel = null
         setOnClickListener(null)

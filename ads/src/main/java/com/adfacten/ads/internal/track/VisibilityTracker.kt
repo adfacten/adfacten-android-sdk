@@ -64,13 +64,7 @@ internal class VisibilityTracker(
         if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnScrollChangedListener(scrollListener)
     }
 
-    /** Current visible ratio of the view, 0 when hidden, detached, in a stopped window or (nearly) transparent. */
-    fun visibleRatio(): Float {
-        if (!view.isAttachedToWindow || !view.isShown || view.windowVisibility != View.VISIBLE) return 0f
-        if (effectiveAlpha(view) < 0.1f) return 0f
-        if (!view.getGlobalVisibleRect(rect)) return 0f
-        return ViewabilityMath.ratio(rect.width(), rect.height(), view.width, view.height)
-    }
+    fun visibleRatio(): Float = visibleRatio(view, rect)
 
     private fun check() = safe("visibility check") {
         if (stopped) return@safe
@@ -91,13 +85,22 @@ internal class VisibilityTracker(
         Sdk.main.postDelayed(tick, 100)
     }
 
-    private fun effectiveAlpha(v: View): Float {
-        var a = 1f
-        var cur: View? = v
-        while (cur != null) {
-            a *= cur.alpha
-            cur = cur.parent as? View
-        }
-        return a
+}
+
+/** Current visible ratio of [view], 0 when hidden, detached, in a stopped window or (nearly) transparent. */
+internal fun visibleRatio(view: View, rect: Rect = Rect()): Float {
+    if (!view.isAttachedToWindow || !view.isShown || view.windowVisibility != View.VISIBLE) return 0f
+    if (effectiveAlpha(view) < 0.1f) return 0f
+    if (!view.getGlobalVisibleRect(rect)) return 0f
+    return ViewabilityMath.ratio(rect.width(), rect.height(), view.width, view.height)
+}
+
+private fun effectiveAlpha(v: View): Float {
+    var a = 1f
+    var cur: View? = v
+    while (cur != null) {
+        a *= cur.alpha
+        cur = cur.parent as? View
     }
+    return a
 }

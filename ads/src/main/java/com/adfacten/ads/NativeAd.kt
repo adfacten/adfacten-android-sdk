@@ -6,6 +6,7 @@ import com.adfacten.ads.internal.AdFormat
 import com.adfacten.ads.internal.AdLoader
 import com.adfacten.ads.internal.LoadedAd
 import com.adfacten.ads.internal.safe
+import com.adfacten.ads.internal.track.AdEventTracker
 
 /**
  * A native ad: you lay out its assets in your own views inside a [NativeAdView], which records the
@@ -34,6 +35,12 @@ public class NativeAd internal constructor(internal val loaded: LoadedAd, privat
     public val isExpired: Boolean get() = safe("isExpired", true) { loaded.isExpired }
 
     internal var boundView: NativeAdView? = null
+
+    // Lives on the ad, not the view: re-binding (RecyclerView, a new view) never records a second impression.
+    private var events: AdEventTracker? = null
+
+    internal fun eventTracker(create: () -> AdEventTracker): AdEventTracker =
+        events ?: create().also { events = it }
 
     /** Unbinds the ad from its view. Call when the ad is no longer needed (e.g. onDestroy). */
     public fun destroy() {

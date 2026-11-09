@@ -1,16 +1,20 @@
 package com.adfacten.ads
 
 /**
- * Why a load or show failed. [code] is one of the constants below; [serverCode] carries the ad server's
- * machine code (`unknown_app`, `app_not_approved`, `placement_mismatch`, `coppa`, `test_only`, …) when there is one.
+ * Why a load or show failed. [code] is one of the constants below and [name] its stable string form
+ * (`no_fill`, `network_error`, …), shared with the iOS SDK. [serverCode] carries the ad server's machine code
+ * (`unknown_app`, `app_not_approved`, `placement_mismatch`, `coppa`, `test_only`, …) when there is one.
  */
 public class AdError internal constructor(
     public val code: Int,
     public val message: String,
     public val serverCode: String? = null,
 ) {
+    /** Stable, platform-independent error name, e.g. `no_fill`. Prefer it over [code] in cross-platform code. */
+    public val name: String get() = nameOf(code)
+
     override fun toString(): String =
-        "AdError(code=$code, message=$message" + (serverCode?.let { ", serverCode=$it" } ?: "") + ")"
+        "AdError(code=$code, name=$name, message=$message" + (serverCode?.let { ", serverCode=$it" } ?: "") + ")"
 
     public companion object {
         public const val INTERNAL_ERROR: Int = 0
@@ -31,5 +35,23 @@ public class AdError internal constructor(
         public const val SHOW_FAILED: Int = 11
         /** A load for this ad is already running. */
         public const val LOAD_IN_PROGRESS: Int = 12
+
+        /** The stable name for a [code]; unknown codes map to `internal_error`. */
+        @JvmStatic
+        public fun nameOf(code: Int): String = when (code) {
+            NOT_INITIALIZED -> "not_initialized"
+            INVALID_REQUEST -> "invalid_request"
+            NETWORK_ERROR -> "network_error"
+            NO_FILL -> "no_fill"
+            SERVER_ERROR -> "server_error"
+            INVALID_RESPONSE -> "invalid_response"
+            REJECTED -> "rejected"
+            AD_EXPIRED -> "ad_expired"
+            ALREADY_SHOWN -> "already_shown"
+            VIDEO_NOT_SUPPORTED -> "video_not_supported"
+            SHOW_FAILED -> "show_failed"
+            LOAD_IN_PROGRESS -> "load_in_progress"
+            else -> "internal_error"
+        }
     }
 }
