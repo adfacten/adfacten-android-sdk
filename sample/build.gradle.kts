@@ -4,9 +4,9 @@ plugins {
     alias(libs.plugins.android.application)
 }
 
-// Put the app key and placement ids from your Adfacten panel (Apps › your app) in sample/dev-app.properties
-// or pass them as -Padfacten.<key>=... A new app stays in test mode until it is reviewed, so it only gets
-// test ads. Leave "endpoint" unset to use the production tracker.
+// The defaults are Adfacten's public sample app: it always receives test ads, which are never billed.
+// To try your own app, put its app key and placement ids from the Adfacten panel (Apps › your app) in
+// sample/dev-app.properties or pass them as -Padfacten.<key>=... Leave "endpoint" unset for production.
 val dev = Properties().apply {
     val f = file("dev-app.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -24,13 +24,13 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
-        buildConfigField("String", "APP_KEY", "\"${cfg("appKey", "apk_YOUR_APP_KEY")}\"")
+        buildConfigField("String", "APP_KEY", "\"${cfg("appKey", "apk_3cnu84fqX8ucMX9XPyeQYHrR")}\"")
         buildConfigField("String", "ENDPOINT", "\"${cfg("endpoint", "")}\"")
-        buildConfigField("String", "PLC_BANNER", "\"${cfg("banner", "plc_YOUR_BANNER")}\"")
-        buildConfigField("String", "PLC_INTERSTITIAL", "\"${cfg("interstitial", "plc_YOUR_INTERSTITIAL")}\"")
-        buildConfigField("String", "PLC_REWARDED", "\"${cfg("rewarded", "plc_YOUR_REWARDED")}\"")
-        buildConfigField("String", "PLC_NATIVE", "\"${cfg("native", "plc_YOUR_NATIVE")}\"")
-        buildConfigField("String", "PLC_APP_OPEN", "\"${cfg("appOpen", "plc_YOUR_APP_OPEN")}\"")
+        buildConfigField("String", "PLC_BANNER", "\"${cfg("banner", "plc_034uZ7K1c31r4F5eyGyUpC")}\"")
+        buildConfigField("String", "PLC_INTERSTITIAL", "\"${cfg("interstitial", "plc_034uZ7K1i1xnu0Ksljnmy4")}\"")
+        buildConfigField("String", "PLC_REWARDED", "\"${cfg("rewarded", "plc_034uZ7K1nrWgf7S5ATCLrI")}\"")
+        buildConfigField("String", "PLC_NATIVE", "\"${cfg("native", "plc_034uZ7K1o0SSewGeBCGY9P")}\"")
+        buildConfigField("String", "PLC_APP_OPEN", "\"${cfg("appOpen", "plc_034uZ7K1o901BKzbEbWDjK")}\"")
     }
     buildFeatures { buildConfig = true }
     buildTypes {

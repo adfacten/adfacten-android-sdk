@@ -299,8 +299,9 @@ photos, messages, health or financial data.
 ./gradlew publish                       # Maven layout in build/maven-repo
 ```
 
-The sample reads its app key, placements and endpoint from Gradle properties
-(`-Padfacten.appKey=… -Padfacten.endpoint=…`) or `sample/dev-app.properties`.
+The sample is preconfigured with Adfacten's public sample app, which always receives test ads (never
+billed), so it runs as is. To try your own app, set its app key and placements as Gradle properties
+(`-Padfacten.appKey=… -Padfacten.banner=…`) or in `sample/dev-app.properties`.
 
 ## License
 
