@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="AdfactenBannerView">
+        <attr name="adf_placementId" format="string" />
+        <attr name="adf_adSize" format="enum">
+            <enum name="banner" value="0" />
+            <enum name="large_banner" value="1" />
+            <enum name="medium_rectangle" value="2" />
+            <enum name="leaderboard" value="3" />
+        </attr>
+        <attr name="adf_autoRefresh" format="boolean" />
+    </declare-styleable>
+    <declare-styleable name="AdfNativeAdView">
+        <attr name="adf_titleView" format="reference" />
+        <attr name="adf_bodyView" format="reference" />
+        <attr name="adf_brandView" format="reference" />
+        <attr name="adf_callToActionView" format="reference" />
+        <attr name="adf_imageView" format="reference" />
+        <attr name="adf_iconView" format="reference" />
+        <attr name="adf_adLabelView" format="reference" />
+    </declare-styleable>
+</resources>

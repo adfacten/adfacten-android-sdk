@@ -1,0 +1,18 @@
+[versions]
+agp = "9.5.1"
+media3 = "1.11.1"
+playAdsIdentifier = "18.3.0"
+playAppSet = "16.1.0"
+junit = "4.13.2"
+orgJson = "20260814"
+
+[libraries]
+media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+play-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "playAdsIdentifier" }
+play-appset = { module = "com.google.android.gms:play-services-appset", version.ref = "playAppSet" }
+junit = { module = "junit:junit", version.ref = "junit" }
+org-json = { module = "org.json:json", version.ref = "orgJson" }
+
+[plugins]
+android-library = { id = "com.android.library", version.ref = "agp" }
+android-application = { id = "com.android.application", version.ref = "agp" }

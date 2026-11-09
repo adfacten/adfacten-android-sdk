@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="adf_label">Reklam</string>
+    <string name="adf_close">Reklamı kapat</string>
+    <string name="adf_learn_more">Daha fazla bilgi</string>
+    <string name="adf_mute">Sesi kapat</string>
+    <string name="adf_unmute">Sesi aç</string>
+    <string name="adf_reward_confirm_title">Video kapatılsın mı?</string>
+    <string name="adf_reward_confirm_message">Şimdi kapatırsanız ödülü alamazsınız.</string>
+    <string name="adf_reward_confirm_resume">Devam et</string>
+    <string name="adf_reward_confirm_close">Kapat</string>
+</resources>
