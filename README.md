@@ -27,10 +27,10 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.adfacten:ads:1.0.0")
+    implementation("com.adfacten:ads:1.0.1")
     // Optional:
-    implementation("com.adfacten:ads-video:1.0.0") // video interstitial / rewarded (minSdk 23)
-    implementation("com.adfacten:ads-gaid:1.0.0")  // advertising ID + App Set ID
+    implementation("com.adfacten:ads-video:1.0.1") // video interstitial / rewarded (minSdk 23)
+    implementation("com.adfacten:ads-gaid:1.0.1")  // advertising ID + App Set ID
 }
 ```
 

@@ -13,6 +13,8 @@ android {
     namespace = "com.adfacten.ads.video"
     compileSdk { version = release(37) }
     defaultConfig {
+        // Apps may compile against older SDKs than we do (Flutter and React Native default to 35/36).
+        aarMetadata { minCompileSdk = 21 }
         minSdk = 23
         consumerProguardFiles("consumer-rules.pro")
     }

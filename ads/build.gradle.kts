@@ -14,6 +14,8 @@ android {
     resourcePrefix = "adf_"
 
     defaultConfig {
+        // Apps may compile against older SDKs than we do (Flutter and React Native default to 35/36).
+        aarMetadata { minCompileSdk = 21 }
         minSdk = 21
         consumerProguardFiles("consumer-rules.pro")
         buildConfigField("String", "SDK_VERSION", "\"$sdkVersion\"")

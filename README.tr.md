@@ -27,10 +27,10 @@ dependencyResolutionManagement {
 
 ```kotlin
 dependencies {
-    implementation("com.adfacten:ads:1.0.0")
+    implementation("com.adfacten:ads:1.0.1")
     // İsteğe bağlı:
-    implementation("com.adfacten:ads-video:1.0.0") // video geçiş / ödüllü (minSdk 23)
-    implementation("com.adfacten:ads-gaid:1.0.0")  // reklam kimliği + App Set ID
+    implementation("com.adfacten:ads-video:1.0.1") // video geçiş / ödüllü (minSdk 23)
+    implementation("com.adfacten:ads-gaid:1.0.1")  // reklam kimliği + App Set ID
 }
 ```
 

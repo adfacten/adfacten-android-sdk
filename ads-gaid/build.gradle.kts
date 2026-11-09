@@ -14,7 +14,11 @@ extra["pomDescription"] = "Optional: lets the Adfacten Ads SDK read the Google a
 android {
     namespace = "com.adfacten.ads.gaid"
     compileSdk { version = release(37) }
-    defaultConfig { minSdk = 21 }
+    defaultConfig {
+        minSdk = 21
+        // Apps may compile against older SDKs than we do (Flutter and React Native default to 35/36).
+        aarMetadata { minCompileSdk = 21 }
+    }
     publishing {
         singleVariant("release") {
             withSourcesJar()
